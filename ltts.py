@@ -22,8 +22,6 @@ class LTTS:
         learning via likelihood maximization.
     """
 
-    #prova cambio
-
     def __init__ (self, shape, par):
         # This are the network size N, input I, output O and max temporal span T
         self.N, self.I, self.O, self.T = shape;

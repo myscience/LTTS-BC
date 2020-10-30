@@ -67,17 +67,8 @@ ltts.clone ((Targ, out), Inp);
 # Here we test the resulting behaviour
 S_gen, action = ltts.compute (Inp);
 
-import matplotlib.pyplot as plt
-
-fig, ax = plt.subplots (ncols = 2);
-ax[0].imshow (Targ, aspect = 'auto', cmap = 'binary');
-ax[1].imshow (S_gen, aspect = 'auto', cmap = 'binary');
-plt.show ();
-
-fig, ax = plt.subplots ();
-ax.plot (out.T);
-ax.plot (action.T)
-plt.show ();
+# Here we visualize the cloned behaviour
+cloning_plot ((Targ, out), (S_gen, action), save = 'test-raster.jpeg');
 
 # Here we init the environment
 env = Reach (max_T = T, targ = targ, init = init);
