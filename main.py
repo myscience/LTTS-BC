@@ -1,3 +1,4 @@
+import visualize as vs
 import numpy as np
 from ltts import LTTS
 from env import Reach
@@ -68,7 +69,7 @@ ltts.clone ((Targ, out), Inp);
 S_gen, action = ltts.compute (Inp);
 
 # Here we visualize the cloned behaviour
-cloning_plot ((Targ, out), (S_gen, action), save = 'test-raster.jpeg');
+vs.cloning_plot ((Targ, out), (S_gen, action), save = 'test-raster.jpeg');
 
 # Here we init the environment
 env = Reach (max_T = T, targ = targ, init = init);
