@@ -1,5 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.transforms as mtransforms
+import matplotlib.patches as mpatch
+from matplotlib.patches import FancyBboxPatch
 
 from time import sleep
 
@@ -41,14 +44,31 @@ class Reach:
         # Here we prepare for rendering
         self.do_render = render;
 
+
         if self.do_render:
             self.fig, self.ax = plt.subplots ();
+            self.fig.tight_layout ();
+
             self.ax.set_xlim (self.extent[0][0] - 0.1, self.extent[1][0] + 0.1);
             self.ax.set_ylim (self.extent[0][1] - 0.1, self.extent[1][1] + 0.1);
             self.ax.axis ('off');
 
-            self.ax.scatter (*self.targ, s = 100);
+            # Bbox object around which the fancy box will be drawn.
+            bb = mtransforms.Bbox(self.extent)
+            domain = FancyBboxPatch((bb.xmin, bb.ymin),
+                                    abs(bb.width), abs(bb.height),
+                                    boxstyle="sawtooth,pad=.02",
+                                    fc = 'none',
+                                    ec = 'k',
+                                    zorder = -10);
+
+            self.ax.add_patch(domain);
+
+            self.ptarg = self.ax.scatter (*self.targ, s = 500, marker = '*', color = 'gold');
+            self.pagen = self.ax.scatter (*self.agen, s = 60, marker = 'p', color = 'darkred');
+
             self.ptraj, = self.ax.plot (*self.agen, c = 'r');
+            self.time = self.ax.text (0.42, -0.1, 'Time 0', fontsize = 16);
             plt.ion();
             plt.show ();
 
@@ -72,11 +92,14 @@ class Reach:
         return self.obv, self.r, self.done;
 
     def render(self):
-        self.ptraj.set_xdata (self.traj[0, :self.t]);
-        self.ptraj.set_ydata (self.traj[1, :self.t]);
+        self.ptraj.set_data (*self.traj[:, :self.t]);
+        self.pagen.set_offsets (self.traj[:, self.t - 1]);
+
+        self.time.set_text ('Time {}'.format (self.t));
 
         # Here we signal redraw
         self.fig.canvas.draw ();
+        self.fig.canvas.flush_events();
         sleep (0.02);
 
         return self.fig;

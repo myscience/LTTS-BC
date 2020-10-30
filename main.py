@@ -29,7 +29,7 @@ par = {'tau_m' : tau_m, 'tau_s' : tau_s, 'tau_ro' : tau_ro, 'beta_ro' : beta_ro,
 	   'sigma_input' : sigma_input, 'sigma_teach' : sigma_teach};
 
 # Here we define target and initial position
-targ = np.array ((1., 0.8));
+targ = np.array ((.9, 0.8));
 init = np.array ((0.5, 0.5));
 
 # Here we init our model
@@ -55,7 +55,7 @@ out[:, steps:] = 0
 inp /= np.max (inp)
 out /= np.max (out)
 
-out += np.random.uniform (-0.1, 0.1, size = out.shape);
+out += np.random.uniform (-0.05, 0.05, size = out.shape);
 
 Inp = ltts.Jin @ inp + ltts.Jteach @ out;
 
@@ -68,22 +68,18 @@ ltts.clone ((Targ, out), Inp);
 # Here we test the resulting behaviour
 S_gen, action = ltts.compute (Inp);
 
-# Here we visualize the cloned behaviour
 vs.cloning_plot ((Targ, out), (S_gen, action), save = 'test-raster.jpeg');
+
+# Here we move the target
+# targ /= 1.1
 
 # Here we init the environment
 env = Reach (max_T = T, targ = targ, init = init);
 
 obv = init
 for t in range (T - 1):
-	action = ltts.step (obv);
-	print (obv, action)
+	action = ltts.step (obv * steps);
 	obv, r, done = env.step (action / steps);
 
-	if done:
-		fig = env.render ();
-
-		fig.savefig ('test.jpeg');
-
-		print ('DONE, {}'.format (t))
-		break;
+	fig = env.render ();
+	# fig.savefig ('test.jpeg');
