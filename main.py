@@ -67,7 +67,6 @@ ltts.clone ((Targ, out), Inp);
 
 # Here we test the resulting behaviour
 S_gen, action = ltts.compute (Inp);
-
 vs.cloning_plot ((Targ, out), (S_gen, action), save = 'test-raster.jpeg');
 
 # Here we move the target
@@ -79,7 +78,7 @@ env = Reach (max_T = T, targ = targ, init = init);
 obv = init
 for t in range (T - 1):
 	action = ltts.step (obv * steps);
-	obv, r, done = env.step (action / steps);
+	obv, r, done, agent = env.step (action / steps);
 
 	fig = env.render ();
 	# fig.savefig ('test.jpeg');

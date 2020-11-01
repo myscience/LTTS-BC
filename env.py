@@ -17,7 +17,7 @@ class Reach:
         wheter an episode is concluded, this can be for example occur when agent
         exits the bounds or target is reached or total simulation time expires.
     '''
-    def __init__(self, max_T = 100, targ = None, init = None, extent = ((0, 0), (1, 1)), render = True):
+    def __init__(self, max_T = 100, targ = None, init = None, extent = ((-1, -1), (1, 1)), render = True):
         # Here we collect environment duration and span
         self.max_T = max_T;
         self.extent = extent;

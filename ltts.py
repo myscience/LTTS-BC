@@ -156,6 +156,32 @@ class LTTS:
         beta_ro = self.par['beta_ro'];
         return self.S.copy (), self.Jout @ ut.sfilter (self.S, itau = beta_ro);
 
+    def compute_online (self, pos0, targ, init_s = None):
+        # Check correct input shape
+        #assert inp.shape[0] == self.N;
+
+        itau_m = self.itau_m;
+        itau_s = self.itau_s;
+
+        #self.S [:, 0] = init if init else np.zeros (self.N);
+        self.S_hat [:, 0] = self.S [:, 0] * itau_s;
+
+        Pos = np.zeros((2, self.T ))
+
+        Pos [:, 0] = pos0;
+
+        for t in range (self.T - 1):
+            self.S_hat [:, t] = self.S_hat [:, t - 1] * itau_s + self.S [:, t] * (1. - itau_s) if t > 0 else self.S_hat [:, 0];
+
+            vel = self.Jout @ self.S_hat [:, t];
+            Pos [:, t+1] = Pos [:, t] + vel*self.dt;
+            self.H [:, t + 1] = self.H [:, t] * (1. - itau_m) + itau_m * (self.J @ self.S_hat [:, t] + self.Jin @ ( targ - Pos [:, t+1]) + self.h [:, t])\
+                                                              + self.Jreset @ self.S [:, t];
+
+            self.S [:, t + 1] = self._sigm (self.H [:, t + 1], dv = self.dv) - 0.5 > 0.;
+
+        beta_ro = self.par['beta_ro'];
+        return self.S.copy (), self.Jout @ ut.sfilter (self.S, itau = beta_ro), Pos;
 
     def clone (self, Targ, Inp, epochs = 500):
         targ, out = Targ;
