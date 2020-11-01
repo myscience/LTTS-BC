@@ -89,7 +89,7 @@ class Reach:
         # Here we increase the env time
         self.t += 1
 
-        return self.obv, self.r, self.done;
+        return self.obv, self.r, self.done, self.agen;
 
     def render(self):
         self.ptraj.set_data (*self.traj[:, :self.t]);
