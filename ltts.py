@@ -89,9 +89,34 @@ class LTTS:
 
         return out;
 
-    def step (self, inp):
-        t = self.t;
+    # def step (self, inp):
+    #     t = self.t;
+    #
+    #     itau_m = self.itau_m;
+    #     itau_s = self.itau_s;
+    #
+    #     self.S_hat [:, t] = (self.S_hat [:, t - 1] * itau_s + self.S [:, t] * (1. - itau_s)) if t > 0 else self.S_hat [:, 0];
+    #
+    #     self.H [:, t + 1] = self.H [:, t] * (1. - itau_m) + itau_m * (self.J @ self.S_hat [:, t] + self.Jin @ inp + self.h [:, t])\
+    #                                                       + self.Jreset @ self.S [:, t];
+    #
+    #     self.S [:, t + 1] = self._sigm (self.H [:, t + 1], dv = self.dv) - 0.5 > 0.;
+    #
+    #     # Here we use our policy to suggest a novel action given the system
+    #     # current state
+    #     action = self.policy ();
+    #
+    #     self.t += 1;
+    #
+    #     # Here we return the chosen next action
+    #     return action
 
+    # def policy (self):
+    #     filt = self.S [:, self.t] * (1 - self.itau_ro)  + self.S[:, self.t + 1] * self.itau_ro;
+    #
+    #     return self.Jout @ filt;
+
+    def step (self, inp, t):
         itau_m = self.itau_m;
         itau_s = self.itau_s;
 
@@ -104,19 +129,18 @@ class LTTS:
 
         # Here we use our policy to suggest a novel action given the system
         # current state
-        action = self.policy ();
-
-        self.t += 1;
+        action = self.policy (self.S[:, t + 1]);
 
         # Here we return the chosen next action
         return action
 
-    def policy (self):
-        filt = self.S [:, self.t] * (1 - self.itau_ro)  + self.S[:, self.t + 1] * self.itau_ro;
+    def policy (self, state):
+        self.out = self.out * self.itau_ro  + state * (1 - self.itau_ro);
 
-        return self.Jout @ filt;
+        return self.Jout @ self.out;
 
-    def compute (self, inp, init = None):
+
+    def compute (self, inp, init = None, rec = True):
         '''
             This function is used to compute the output of our model given an
             input.
@@ -148,13 +172,30 @@ class LTTS:
         for t in range (self.T - 1):
             self.S_hat [:, t] = self.S_hat [:, t - 1] * itau_s + self.S [:, t] * (1. - itau_s) if t > 0 else self.S_hat [:, 0];
 
-            self.H [:, t + 1] = self.H [:, t] * (1. - itau_m) + itau_m * (self.J @ self.S_hat [:, t] + inp [:, t] + self.h [:, t])\
+            self.H [:, t + 1] = self.H [:, t] * (1. - itau_m) + itau_m * (
+                                                                ((self.J @ self.S_hat [:, t]) if rec else 0)
+                                                                + inp [:, t] + self.h [:, t])\
                                                               + self.Jreset @ self.S [:, t];
 
             self.S [:, t + 1] = self._sigm (self.H [:, t + 1], dv = self.dv) - 0.5 > 0.;
 
         beta_ro = self.par['beta_ro'];
         return self.S.copy (), self.Jout @ ut.sfilter (self.S, itau = beta_ro);
+
+    def implement (self, expert):
+        if (self.J != 0).any ():
+            print ('WARNING: Implement expert with non-zero recurrent weights\n');
+
+        # First we parse expert input-output pair
+        inp, out = expert
+
+        # We then build a target network dynamics
+        Inp = self.Jin @ inp;
+        tInp = Inp + self.Jteach @ out;
+
+        targ, _ = self.compute (tInp, rec = False);
+
+        return targ, Inp;
 
     def compute_online (self, pos0, targ, init_s = None):
         # Check correct input shape
@@ -183,9 +224,65 @@ class LTTS:
         beta_ro = self.par['beta_ro'];
         return self.S.copy (), self.Jout @ ut.sfilter (self.S, itau = beta_ro), Pos;
 
-    def clone (self, Targ, Inp, epochs = 500):
-        targ, out = Targ;
+    # def clone (self, Targ, Inp, epochs = 500):
+    #     targ, out = Targ;
+    #
+    #     itau_m = self.itau_m;
+    #     itau_s = self.itau_s;
+    #
+    #     alpha = self.par['alpha'];
+    #     alpha_rout = self.par['alpha_rout'];
+    #     beta_ro = self.par['beta_ro'];
+    #
+    #     self.S [:, 0] = targ [:, 0].copy ();
+    #     self.S_hat [:, 0] = self.S [:, 0] * itau_s;
+    #
+    #     Tmax = np.shape (targ) [-1];
+    #     dH = np.zeros ((self.N, self.T));
+    #
+    #     # Here we pre-train the readout matrix
+    #     S_rout = ut.sfilter (targ, itau = beta_ro);
+    #     adam = Adam (alpha = alpha_rout, drop = 0.9, drop_time = 50);
+    #
+    #     self.Jout = adam.optimize (ut.dJ_rout, out, S_rout, init = self.Jout, t_max = 1000);
+    #
+    #     # Here we train the network - online mode
+    #     adam = Adam (alpha = alpha, drop = 0.9, drop_time = 100 * self.T);
+    #
+    #     for epoch in trange (epochs, leave = False, desc = 'Cloning'):
+    #         # Here we train the network
+    #         for t in range (self.T - 1):
+    #             self.S_hat [:, t] = self.S_hat [:, t - 1] * itau_s + targ [:, t] * (1. - itau_s) if t > 0 else self.S_hat [:, 0];
+    #
+    #             self.H [:, t + 1] = self.H [:, t] * (1. - itau_m) + itau_m * (self.J @ self.S_hat [:, t] + Inp [:, t] + self.h [:, t])\
+    #                                                               + self.Jreset @ targ [:, t];
+    #
+    #             dH [:, t + 1] = dH [:, t]  * (1. - itau_m) + itau_m * self.S_hat [:, t];
+    #
+    #             dJ = np.outer (targ [:, t + 1] - self._sigm (self.H [:, t + 1], dv = self.dv), dH [:, t + 1]);
+    #             self.J = adam.step (self.J, dJ);
+    #
+    #             np.fill_diagonal (self.J, 0.);
+    #
+    #         # if mode == 'offline':
+    #         #     dJ = (targ - sigm (self.H, dv = dv)) @ dH.T;
+    #         #     self.J = opt_rec.step (self.J, dJ);
+    #         #
+    #         #     np.fill_diagonal (self.J, 0.);
+    #
+    #     return ;
 
+    def clone (self, experts, targets, epochs = 500):
+        assert len (experts) == len (targets);
+
+        def shuffle(iter):
+            rng_state = np.random.get_state();
+
+            for a in iter:
+                np.random.shuffle(a);
+                np.random.set_state(rng_state);
+
+        # Here we clone this behaviour
         itau_m = self.itau_m;
         itau_s = self.itau_s;
 
@@ -193,41 +290,45 @@ class LTTS:
         alpha_rout = self.par['alpha_rout'];
         beta_ro = self.par['beta_ro'];
 
-        self.S [:, 0] = targ [:, 0].copy ();
-        self.S_hat [:, 0] = self.S [:, 0] * itau_s;
-
-        Tmax = np.shape (targ) [-1];
         dH = np.zeros ((self.N, self.T));
 
         # Here we pre-train the readout matrix
-        S_rout = ut.sfilter (targ, itau = beta_ro);
-        adam = Adam (alpha = alpha_rout, drop = 0.9, drop_time = 50);
+        for expert, targ in zip (experts, targets):
+            inp, out = expert;
 
-        self.Jout = adam.optimize (ut.dJ_rout, out, S_rout, init = self.Jout, t_max = 1000);
+            S_rout = ut.sfilter (targ, itau = beta_ro);
+
+            adam = Adam (alpha = alpha_rout, drop = 0.9, drop_time = 50);
+            self.Jout = adam.optimize (ut.dJ_rout, out, S_rout, init = self.Jout, t_max = 1000);
 
         # Here we train the network - online mode
         adam = Adam (alpha = alpha, drop = 0.9, drop_time = 100 * self.T);
 
+        targets = np.array (targets)
+        inps = np.array ([self.Jin @ exp[0] for exp in experts]);
+        outs = np.array ([exp[1] for exp in experts]);
+
+        self.S [:, 0] = targ [:, 0].copy ();
+        self.S_hat [:, 0] = self.S [:, 0] * itau_s;
+
+        # Here we train the network
         for epoch in trange (epochs, leave = False, desc = 'Cloning'):
-            # Here we train the network
-            for t in range (self.T - 1):
-                self.S_hat [:, t] = self.S_hat [:, t - 1] * itau_s + targ [:, t] * (1. - itau_s) if t > 0 else self.S_hat [:, 0];
+            shuffle ((inps, outs, targets));
 
-                self.H [:, t + 1] = self.H [:, t] * (1. - itau_m) + itau_m * (self.J @ self.S_hat [:, t] + Inp [:, t] + self.h [:, t])\
-                                                                  + self.Jreset @ targ [:, t];
+            for inp, out, targ in zip (inps, outs, targets):
 
-                dH [:, t + 1] = dH [:, t]  * (1. - itau_m) + itau_m * self.S_hat [:, t];
+                for t in range (self.T - 1):
+                    self.S_hat [:, t] = self.S_hat [:, t - 1] * itau_s + targ [:, t] * (1. - itau_s) if t > 0 else self.S_hat [:, 0];
 
-                dJ = np.outer (targ [:, t + 1] - self._sigm (self.H [:, t + 1], dv = self.dv), dH [:, t + 1]);
-                self.J = adam.step (self.J, dJ);
+                    self.H [:, t + 1] = self.H [:, t] * (1. - itau_m) + itau_m * (self.J @ self.S_hat [:, t] + inp [:, t] + self.h [:, t])\
+                                                                      + self.Jreset @ targ [:, t];
 
-                np.fill_diagonal (self.J, 0.);
+                    dH [:, t + 1] = dH [:, t]  * (1. - itau_m) + itau_m * self.S_hat [:, t];
 
-            # if mode == 'offline':
-            #     dJ = (targ - sigm (self.H, dv = dv)) @ dH.T;
-            #     self.J = opt_rec.step (self.J, dJ);
-            #
-            #     np.fill_diagonal (self.J, 0.);
+                    dJ = np.outer (targ [:, t + 1] - self._sigm (self.H [:, t + 1], dv = self.dv), dH [:, t + 1]);
+                    self.J = adam.step (self.J, dJ);
+
+                    np.fill_diagonal (self.J, 0.);
 
         return ;
 

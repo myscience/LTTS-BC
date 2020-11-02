@@ -58,3 +58,15 @@ def read (S, J_rout, itau_ro = 0.5):
     out = sfilter (S, itau = itau_ro);
 
     return J_rout @ out;
+
+
+def style_ax (ax, lim):
+    if lim[0]: ax.set_xlim (*lim[0]);
+    if lim[1]: ax.set_ylim (*lim[1]);
+    ax.set_xticks (ax.get_xticks ());
+    ax.set_yticks (ax.get_yticks ());
+
+    ax.spines['top'].set_visible (False);
+    ax.spines['right'].set_visible (False);
+    ax.spines['left'].set_bounds (*ax.get_ylim());
+    ax.spines['bottom'].set_bounds (*ax.get_xlim());

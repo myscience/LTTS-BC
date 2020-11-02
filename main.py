@@ -12,8 +12,8 @@ tau_s = 2. * dt;
 tau_ro = 5. * dt;
 beta_s  = np.exp (-dt / tau_s);
 beta_ro = np.exp (-dt / tau_ro);
-sigma_teach = 5.;
-sigma_input = 5.;
+sigma_teach = 4.;
+sigma_input = 6.;
 offT = 1;
 dv = 1 / 5.;
 alpha = .1;
@@ -29,8 +29,12 @@ par = {'tau_m' : tau_m, 'tau_s' : tau_s, 'tau_ro' : tau_ro, 'beta_ro' : beta_ro,
 	   'sigma_input' : sigma_input, 'sigma_teach' : sigma_teach};
 
 # Here we define target and initial position
-targ = np.array ((.9, 0.8));
+targ1 = np.array ((.9, 0.8));
+targ2 = np.array ((.2, 0.6));
 init = np.array ((0.5, 0.5));
+
+# Here we init the environment
+env = Reach (max_T = T, targ = targ1, init = init);
 
 # Here we init our model
 ltts = LTTS ((N, I, O, T), par);
@@ -38,46 +42,28 @@ ltts = LTTS ((N, I, O, T), par);
 # Based on this information we compute the expert trajectory input-output and
 # produce a network behaviour to clone
 steps = 80;
-dx, dy = (targ - init) / steps;
 
-inp = targ - (init + np.array ([((i + 1) * dx, (i + 1) * dy) for i in range (steps)]))
-out = np.array ([[dx, dy] * steps]).reshape (-1, 2)
+expert1 = env.build_expert (targ1, init, steps = steps, T = T, offT = offT);
+expert2 = env.build_expert (targ2, init, steps = steps, T = T, offT = offT);
 
-inp = np.pad (inp, ((0, T - inp.shape [0]), (0, 0))).T;
-out = np.pad (out, ((0, T - out.shape [0]), (0, 0))).T;
+targ1, inp1 = ltts.implement (expert1);
+targ2, inp2 = ltts.implement (expert2);
 
-# NOTE: WE NEED TO ADD A CHANNEL TO KEEP ACTIVITY WITHIN THE NETWORK EVEN WHEN
-#	    BOTH THE INPUT AND THE OUTPUT TEND TO DIE OUT
-
-out[:, :offT] = 0;
-out[:, steps:] = 0
-
-inp /= np.max (inp)
-out /= np.max (out)
-
-out += np.random.uniform (-0.05, 0.05, size = out.shape);
-
-Inp = ltts.Jin @ inp + ltts.Jteach @ out;
-
-Targ, _ = ltts.compute (Inp);
+# out += np.random.uniform (-0.05, 0.05, size = out.shape);
 
 # Here we clone this behaviour
-Inp = ltts.Jin @ inp;
-ltts.clone ((Targ, out), Inp);
+ltts.clone ((expert1, expert2), (targ1, targ2), epochs = 500);
 
 # Here we test the resulting behaviour
-S_gen, action = ltts.compute (Inp);
-vs.cloning_plot ((Targ, out), (S_gen, action), save = 'test-raster.jpeg');
+S_gen, action = ltts.compute (inp1);
+vs.cloning_plot ((targ1, expert1[1]), (S_gen, action), save = 'test-raster.jpeg');
 
 # Here we move the target
 # targ /= 1.1
 
-# Here we init the environment
-env = Reach (max_T = T, targ = targ, init = init);
-
 obv = init
 for t in range (T - 1):
-	action = ltts.step (obv * steps);
+	action = ltts.step (obv, t);
 	obv, r, done, agent = env.step (action / steps);
 
 	fig = env.render ();

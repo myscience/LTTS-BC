@@ -17,7 +17,7 @@ class Reach:
         wheter an episode is concluded, this can be for example occur when agent
         exits the bounds or target is reached or total simulation time expires.
     '''
-    def __init__(self, max_T = 100, targ = None, init = None, extent = ((-1, -1), (1, 1)), render = True):
+    def __init__(self, max_T = 100, targ = None, init = None, extent = ((-1, 1), (1, 1)), render = True):
         # Here we collect environment duration and span
         self.max_T = max_T;
         self.extent = extent;
@@ -70,7 +70,6 @@ class Reach:
             self.ptraj, = self.ax.plot (*self.agen, c = 'r');
             self.time = self.ax.text (0.42, -0.1, 'Time 0', fontsize = 16);
             plt.ion();
-            plt.show ();
 
     def step(self, action):
         # Here we apply the provided action to the agent state.
@@ -100,6 +99,7 @@ class Reach:
         # Here we signal redraw
         self.fig.canvas.draw ();
         self.fig.canvas.flush_events();
+        plt.show ();
         sleep (0.02);
 
         return self.fig;
@@ -114,3 +114,22 @@ class Reach:
         # Dense reward is defined as decaying with the distance between agent
         # position and target.
         return np.exp (-dist * self.inv_scale);
+
+
+    def build_expert (self, targ, init, steps = 80, T = 100, offT = 1, norm = True):
+        assert T > steps;
+
+        dx, dy = (targ - init) / steps;
+
+        inp = targ - (init + np.array ([((i + 1) * dx, (i + 1) * dy) for i in range (steps)]))
+        out = np.array ([[dx, dy] * steps]).reshape (-1, 2)
+
+        inp = np.pad (inp, ((0, T - inp.shape [0]), (0, 0))).T;
+        out = np.pad (out, ((0, T - out.shape [0]), (0, 0))).T;
+
+        out[:, :offT] = 0;
+        out[:, steps:] = 0
+
+        if norm: out /= np.max (np.abs (out))
+
+        return inp, out;
