@@ -52,8 +52,8 @@ out = np.pad (out, ((0, T - out.shape [0]), (0, 0))).T;
 out[:, :offT] = 0;
 out[:, steps:] = 0
 
-inp /= np.max (inp)
-out /= np.max (out)
+inp /= np.max ( np.abs(inp))
+out /= np.max ( np.abs(out))
 
 out += np.random.uniform (-0.05, 0.05, size = out.shape);
 
