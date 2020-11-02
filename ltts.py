@@ -63,11 +63,15 @@ class LTTS:
         self.S = np.zeros (net_shape);
         self.S_hat = np.zeros (net_shape);
 
+
+        # This is the single-time output buffer
+        self.out = np.zeros (self.N);
+
         # Here we save the params dictionary
         self.par = par;
 
         # Internal time keeping
-        self.t = 0;
+        # self.t = 0;
 
     def _sigm (self, x, dv = None):
         if dv is None:
