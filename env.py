@@ -17,7 +17,7 @@ class Reach:
         wheter an episode is concluded, this can be for example occur when agent
         exits the bounds or target is reached or total simulation time expires.
     '''
-    def __init__(self, max_T = 100, targ = None, init = None, extent = ((-1, -1), (1, 1)), render = True):
+    def __init__(self, targ = None, init = None, max_T = 500, extent = ((-1, -1), (1, 1)), render = True):
         # Here we collect environment duration and span
         self.max_T = max_T;
         self.extent = np.array (extent);
@@ -68,7 +68,7 @@ class Reach:
             self.pagen = self.ax.scatter (*self.agen, s = 60, marker = 'p', color = 'darkred');
 
             self.ptraj, = self.ax.plot (*self.agen, c = 'r');
-            self.time = self.ax.text (0.42, -0.1, 'Time 0', fontsize = 16);
+            self.time = self.ax.text (-0.1, 1., 'Time 0', fontsize = 16);
             plt.ion();
 
     def step(self, action):
@@ -115,6 +115,9 @@ class Reach:
         # position and target.
         return np.exp (-dist * self.inv_scale);
 
+    def set_target (self, new_targ):
+        self.targ = np.array (new_targ);
+        self.ptarg.set_offsets (self.targ);
 
     def build_expert (self, targ, init, steps = 80, T = 100, offT = 1, norm = True):
         assert T > steps;

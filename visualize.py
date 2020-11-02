@@ -25,4 +25,5 @@ def cloning_plot (Targ, Agent, save = None):
     ut.style_ax (ax3, ((0, 100), None))
 
     if save: fig.savefig (save);
-    plt.show ();
+
+    plt.close (fig) if save else plt.show ();

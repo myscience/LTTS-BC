@@ -30,11 +30,13 @@ par = {'tau_m' : tau_m, 'tau_s' : tau_s, 'tau_ro' : tau_ro, 'beta_ro' : beta_ro,
 
 # Here we define target and initial position
 targ1 = np.array ((.9, 0.8));
-targ2 = np.array ((.2, 0.6));
+targ2 = np.array ((-.2, -0.6));
+targ3 = np.array ((-0.7, 0.8));
+
 init = np.array ((0., 0.));
 
 # Here we init the environment
-env = Reach (max_T = T, targ = targ1, init = init);
+env = Reach (targ = targ1, init = init);
 
 # Here we init our model
 ltts = LTTS ((N, I, O, T), par);
@@ -42,41 +44,49 @@ ltts = LTTS ((N, I, O, T), par);
 # Based on this information we compute the expert trajectory input-output and
 # produce a network behaviour to clone
 steps = 80;
-
 expert1 = env.build_expert (targ1, init, steps = steps, T = T, offT = offT);
 expert2 = env.build_expert (targ2, init, steps = steps, T = T, offT = offT);
 
-targ1, inp1 = ltts.implement (expert1);
-targ2, inp2 = ltts.implement (expert2);
-
 # out += np.random.uniform (-0.05, 0.05, size = out.shape);
 
-# Here we clone this behaviour
-ltts.clone ((expert1, ), (targ1, ), epochs = 500);
+# Here we implement the expert behaviour into a target network dynamics
+itarg1, inp1 = ltts.implement (expert1);
+itarg2, inp2 = ltts.implement (expert2);
+
+# Here we clone the network dynamics
+ltts.clone ((expert1, expert2), (itarg1, itarg2), epochs = 1000);
+# ltts.clone ((expert1, ), (targ1, ), epochs = 500);
 
 # Here we test the resulting behaviour
 S_gen, action = ltts.compute (inp1);
-vs.cloning_plot ((targ1, expert1[1]), (S_gen, action), save = 'test-raster.png');
+
+vs.cloning_plot ((itarg1, expert1[1]), (S_gen, action), save = 'test-raster.jpeg');
 
 # Here we move the target
 # targ /= 1.1
 
-obv = init
+S_h = [np.zeros (N)]
 obv_h = [init]
 act_h = []
-for t in range (T - 1):
-	action = ltts.step (obv, t);
+
+obv = init
+
+env.set_target (targ3);
+
+for t in range (2 * T):
+	action, S = ltts.step (obv, t);
 	obv, r, done, agen = env.step (action / steps);
 
 	obv_h.append (obv.copy ());
 	act_h.append (action);
+	S_h.append (S);
 
 	fig = env.render ();
 
-print (env.traj);
 fig.savefig ('Final Env.png');
 
 obv_h = np.array (obv_h)
+S_h = np.array (S_h).T;
 
 import matplotlib.pyplot as plt
 import utils as ut
@@ -84,9 +94,9 @@ import utils as ut
 fig, ax = plt.subplots (ncols = 2, nrows = 2)
 
 ax[0, 0].imshow (S_gen, aspect = 'auto', cmap = 'binary');
-ax[0, 1].imshow (ltts.S, aspect = 'auto', cmap = 'binary');
-ax[1, 0].imshow (np.abs (S_gen - ltts.S), aspect = 'auto', cmap = 'binary');
-img = ax[1, 1].imshow (np.abs (inp1 - ltts.Jin @  obv_h.T), aspect = 'auto');
+ax[0, 1].imshow (S_h, aspect = 'auto', cmap = 'binary');
+ax[1, 0].imshow (np.abs (S_gen - S_h[:, :100]), aspect = 'auto', cmap = 'binary');
+img = ax[1, 1].imshow (np.abs (inp1 - (ltts.Jin @  obv_h.T)[:, :100]), aspect = 'auto');
 
 ut.style_ax (ax[0, 0], ((0, 100), (0, 100)))
 ut.style_ax (ax[0, 1], ((0, 100), (0, 100)))
@@ -95,8 +105,8 @@ ut.style_ax (ax[1, 1], ((0, 100), (0, 100)))
 
 fig.colorbar (img, ax = ax[1, 1]);
 
-fig.savefig ('S_test.png');
-plt.show ();
+fig.savefig ('test1.png');
+# plt.show ();
 
 
 fig, ax = plt.subplots ();
@@ -107,5 +117,5 @@ tw_ax.plot (np.array (act_h), label = 'actions');
 ax.legend ();
 tw_ax.legend ();
 
-fig.savefig ('obv-act_test.png')
-plt.show ();
+fig.savefig ('test.png')
+# plt.show ();

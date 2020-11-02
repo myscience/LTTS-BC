@@ -54,24 +54,20 @@ class LTTS:
         h = par['h'];
 
         assert type (h) in (np.ndarray, float, int)
-        self.h = h if isinstance (h, np.ndarray) else np.ones (net_shape) * h;
+        self.h = h if isinstance (h, np.ndarray) else np.ones (self.N) * h;
 
         # Membrane potential
-        self.H = np.ones (net_shape) * par['Vo'];
+        self.H = np.ones (self.N) * par['Vo'];
 
         # These are the spikes train and the filtered spikes train
-        self.S = np.zeros (net_shape);
-        self.S_hat = np.zeros (net_shape);
-
+        self.S = np.zeros (self.N);
+        self.S_hat = np.zeros (self.N);
 
         # This is the single-time output buffer
         self.out = np.zeros (self.N);
 
         # Here we save the params dictionary
         self.par = par;
-
-        # Internal time keeping
-        # self.t = 0;
 
     def _sigm (self, x, dv = None):
         if dv is None:
@@ -124,19 +120,19 @@ class LTTS:
         itau_m = self.itau_m;
         itau_s = self.itau_s;
 
-        self.S_hat [:, t] = (self.S_hat [:, t - 1] * itau_s + self.S [:, t] * (1. - itau_s)) if t > 0 else self.S_hat [:, 0];
+        self.S_hat [:] = (self.S_hat [:] * itau_s + self.S [:] * (1. - itau_s))
 
-        self.H [:, t + 1] = self.H [:, t] * (1. - itau_m) + itau_m * (self.J @ self.S_hat [:, t] + self.Jin @ inp + self.h [:, t])\
-                                                          + self.Jreset @ self.S [:, t];
+        self.H [:] = self.H [:] * (1. - itau_m) + itau_m * (self.J @ self.S_hat [:] + self.Jin @ inp + self.h)\
+                                                          + self.Jreset @ self.S [:];
 
-        self.S [:, t + 1] = self._sigm (self.H [:, t + 1], dv = self.dv) - 0.5 > 0.;
+        self.S [:] = self._sigm (self.H [:], dv = self.dv) - 0.5 > 0.;
 
         # Here we use our policy to suggest a novel action given the system
         # current state
-        action = self.policy (self.S[:, t + 1]);
+        action = self.policy (self.S);
 
         # Here we return the chosen next action
-        return action
+        return action, self.S.copy ()
 
     def policy (self, state):
         self.out = self.out * self.itau_ro  + state * (1 - self.itau_ro);
@@ -167,24 +163,27 @@ class LTTS:
         # Check correct input shape
         assert inp.shape[0] == self.N;
 
+        N, T = inp.shape;
+
         itau_m = self.itau_m;
         itau_s = self.itau_s;
 
-        self.S [:, 0] = init if init else np.zeros (self.N);
-        self.S_hat [:, 0] = self.S [:, 0] * itau_s;
+        self.S [:] = init if init else np.zeros (self.N);
+        self.S_hat [:] = self.S [:] * itau_s;
 
-        for t in range (self.T - 1):
-            self.S_hat [:, t] = self.S_hat [:, t - 1] * itau_s + self.S [:, t] * (1. - itau_s) if t > 0 else self.S_hat [:, 0];
+        Sout = np.zeros ((N, T));
 
-            self.H [:, t + 1] = self.H [:, t] * (1. - itau_m) + itau_m * (
-                                                                ((self.J @ self.S_hat [:, t]) if rec else 0)
-                                                                + inp [:, t] + self.h [:, t])\
-                                                              + self.Jreset @ self.S [:, t];
+        for t in range (T - 1):
+            self.S_hat [:] = self.S_hat [:] * itau_s + self.S [:] * (1. - itau_s)
 
-            self.S [:, t + 1] = self._sigm (self.H [:, t + 1], dv = self.dv) - 0.5 > 0.;
+            self.H [:] = self.H * (1. - itau_m) + itau_m * ((self.J @ self.S_hat [:] if rec else 0)
+                                                            + inp [:, t] + self.h)\
+                                                         + self.Jreset @ self.S;
 
-        beta_ro = self.par['beta_ro'];
-        return self.S.copy (), self.Jout @ ut.sfilter (self.S, itau = beta_ro);
+            self.S [:] = self._sigm (self.H, dv = self.dv) - 0.5 > 0.;
+            Sout [:, t] = self.S.copy ();
+
+        return Sout, self.Jout @ ut.sfilter (Sout, itau = self.par['beta_ro']);
 
     def implement (self, expert):
         if (self.J != 0).any ():
@@ -294,16 +293,8 @@ class LTTS:
         alpha_rout = self.par['alpha_rout'];
         beta_ro = self.par['beta_ro'];
 
-        dH = np.zeros ((self.N, self.T));
-
-        # Here we pre-train the readout matrix
-        for expert, targ in zip (experts, targets):
-            inp, out = expert;
-
-            S_rout = ut.sfilter (targ, itau = beta_ro);
-
-            adam = Adam (alpha = alpha_rout, drop = 0.9, drop_time = 50);
-            self.Jout = adam.optimize (ut.dJ_rout, out, S_rout, init = self.Jout, t_max = 1000);
+        S_rout = [ut.sfilter (targ, itau = beta_ro) for targ in targets];
+        adam_out = Adam (alpha = alpha_rout, drop = 0.9, drop_time = 50);
 
         # Here we train the network - online mode
         adam = Adam (alpha = alpha, drop = 0.9, drop_time = 100 * self.T);
@@ -312,24 +303,31 @@ class LTTS:
         inps = np.array ([self.Jin @ exp[0] for exp in experts]);
         outs = np.array ([exp[1] for exp in experts]);
 
-        self.S [:, 0] = targ [:, 0].copy ();
-        self.S_hat [:, 0] = self.S [:, 0] * itau_s;
+        dH = np.zeros (self.N);
 
         # Here we train the network
         for epoch in trange (epochs, leave = False, desc = 'Cloning'):
-            shuffle ((inps, outs, targets));
+            shuffle ((inps, outs, targets, S_rout));
+
+            for out, s_out in zip (outs, S_rout):
+                dJ = (out - self.Jout @ s_out) @ s_out.T;
+                self.Jout = adam_out.step (self.Jout, dJ);
 
             for inp, out, targ in zip (inps, outs, targets):
+                self.S [:] *= 0;#targ [:, 0].copy ();
+                self.S_hat [:] *= 0;
+
+                dH *= 0;
 
                 for t in range (self.T - 1):
-                    self.S_hat [:, t] = self.S_hat [:, t - 1] * itau_s + targ [:, t] * (1. - itau_s) if t > 0 else self.S_hat [:, 0];
+                    self.S_hat [:] = self.S_hat * itau_s + targ [:, t] * (1. - itau_s)
 
-                    self.H [:, t + 1] = self.H [:, t] * (1. - itau_m) + itau_m * (self.J @ self.S_hat [:, t] + inp [:, t] + self.h [:, t])\
-                                                                      + self.Jreset @ targ [:, t];
+                    self.H [:] = self.H * (1. - itau_m) + itau_m * (self.J @ self.S_hat + inp [:, t] + self.h)\
+                                                                 + self.Jreset @ targ [:, t];
 
-                    dH [:, t + 1] = dH [:, t]  * (1. - itau_m) + itau_m * self.S_hat [:, t];
+                    dH [:] = dH  * (1. - itau_m) + itau_m * self.S_hat;
 
-                    dJ = np.outer (targ [:, t + 1] - self._sigm (self.H [:, t + 1], dv = self.dv), dH [:, t + 1]);
+                    dJ = np.outer (targ [:, t + 1] - self._sigm (self.H, dv = self.dv), dH);
                     self.J = adam.step (self.J, dJ);
 
                     np.fill_diagonal (self.J, 0.);
