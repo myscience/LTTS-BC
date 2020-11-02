@@ -62,9 +62,48 @@ vs.cloning_plot ((targ1, expert1[1]), (S_gen, action), save = 'test-raster.jpeg'
 # targ /= 1.1
 
 obv = init
+obv_h = [init]
+act_h = []
 for t in range (T - 1):
 	action = ltts.step (obv, t);
-	obv, r, done, agent = env.step (action / steps);
+	obv, r, done, agen = env.step (action / steps);
+
+	obv_h.append (obv.copy ());
+	act_h.append (action);
 
 	fig = env.render ();
 	# fig.savefig ('test.jpeg');
+
+obv_h = np.array (obv_h)
+
+import matplotlib.pyplot as plt
+import utils as ut
+
+fig, ax = plt.subplots (ncols = 2, nrows = 2)
+
+ax[0, 0].imshow (S_gen, aspect = 'auto', cmap = 'binary');
+ax[0, 1].imshow (ltts.S, aspect = 'auto', cmap = 'binary');
+ax[1, 0].imshow (np.abs (S_gen - ltts.S), aspect = 'auto', cmap = 'binary');
+img = ax[1, 1].imshow (np.abs (inp1 - ltts.Jin @  obv_h.T), aspect = 'auto');
+
+ut.style_ax (ax[0, 0], ((0, 100), (0, 100)))
+ut.style_ax (ax[0, 1], ((0, 100), (0, 100)))
+ut.style_ax (ax[1, 0], ((0, 100), (0, 100)))
+ut.style_ax (ax[1, 1], ((0, 100), (0, 100)))
+
+fig.colorbar (img, ax = ax[1, 1]);
+
+fig.savefig ('S_test.jpeg');
+plt.show ();
+
+
+fig, ax = plt.subplots ();
+tw_ax = ax.twinx ();
+ax.plot (obv_h[:, 0], c = 'r', label = 'observation');
+ax.plot (obv_h[:, 1], c = 'g', label = 'observation');
+tw_ax.plot (np.array (act_h), label = 'actions');
+ax.legend ();
+tw_ax.legend ();
+
+fig.savefig ('obv-act_test.jpeg')
+plt.show ();
