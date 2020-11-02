@@ -31,7 +31,7 @@ par = {'tau_m' : tau_m, 'tau_s' : tau_s, 'tau_ro' : tau_ro, 'beta_ro' : beta_ro,
 # Here we define target and initial position
 targ1 = np.array ((.9, 0.8));
 targ2 = np.array ((.2, 0.6));
-init = np.array ((0.5, 0.5));
+init = np.array ((0., 0.));
 
 # Here we init the environment
 env = Reach (max_T = T, targ = targ1, init = init);
@@ -52,11 +52,11 @@ targ2, inp2 = ltts.implement (expert2);
 # out += np.random.uniform (-0.05, 0.05, size = out.shape);
 
 # Here we clone this behaviour
-ltts.clone ((expert1, expert2), (targ1, targ2), epochs = 500);
+ltts.clone ((expert1, ), (targ1, ), epochs = 500);
 
 # Here we test the resulting behaviour
 S_gen, action = ltts.compute (inp1);
-vs.cloning_plot ((targ1, expert1[1]), (S_gen, action), save = 'test-raster.jpeg');
+vs.cloning_plot ((targ1, expert1[1]), (S_gen, action), save = 'test-raster.png');
 
 # Here we move the target
 # targ /= 1.1
@@ -72,7 +72,9 @@ for t in range (T - 1):
 	act_h.append (action);
 
 	fig = env.render ();
-	# fig.savefig ('test.jpeg');
+
+print (env.traj);
+fig.savefig ('Final Env.png');
 
 obv_h = np.array (obv_h)
 
@@ -93,7 +95,7 @@ ut.style_ax (ax[1, 1], ((0, 100), (0, 100)))
 
 fig.colorbar (img, ax = ax[1, 1]);
 
-fig.savefig ('S_test.jpeg');
+fig.savefig ('S_test.png');
 plt.show ();
 
 
@@ -105,5 +107,5 @@ tw_ax.plot (np.array (act_h), label = 'actions');
 ax.legend ();
 tw_ax.legend ();
 
-fig.savefig ('obv-act_test.jpeg')
+fig.savefig ('obv-act_test.png')
 plt.show ();
