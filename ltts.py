@@ -58,7 +58,7 @@ class LTTS:
 
         # Membrane potential
         self.H = np.ones (self.N) * par['Vo'];
-
+        self.Vo = par['Vo'];
         # These are the spikes train and the filtered spikes train
         self.S = np.zeros (self.N);
         self.S_hat = np.zeros (self.N);
@@ -170,6 +170,9 @@ class LTTS:
 
         self.S [:] = init if init else np.zeros (self.N);
         self.S_hat [:] = self.S [:] * itau_s;
+
+        self.H [:]*=0
+        self.H [:]+=self.Vo
 
         Sout = np.zeros ((N, T));
 
@@ -316,6 +319,9 @@ class LTTS:
             for inp, out, targ in zip (inps, outs, targets):
                 self.S [:] *= 0;#targ [:, 0].copy ();
                 self.S_hat [:] *= 0;
+
+                self.H [:]*=0
+                self.H [:]+=self.Vo
 
                 dH *= 0;
 
