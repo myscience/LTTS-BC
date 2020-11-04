@@ -60,62 +60,32 @@ ltts.clone ((expert1, expert2), (itarg1, itarg2), epochs = 1000);
 # Here we test the resulting behaviour
 S_gen, action = ltts.compute (inp1);
 
-vs.cloning_plot ((itarg1, expert1[1]), (S_gen, action), save = 'test-raster.jpeg');
+vs.cloning_plot ((itarg1, expert1[1]), (S_gen, action), save = 'test-raster.png');
 
 # Here we move the target
 # targ /= 1.1
 
-S_h = [np.zeros (N)]
-obv_h = [init]
-act_h = []
+hist = {'obv' : np.empty ((2, Tend)), 'act' : np.empty ((2, Tend)),
+		'agent' : np.empty ((2, Tend)), 'targ' : np.empty ((2, Tend)),
+		'expert' : experts, 'targets' : targets,
+		'S' : np.empty ((N, Tend)), 'T' : Tend};
 
 obv = init
-
-env.set_target (targ3);
-
-for t in range (2 * T):
+for t in range (Tend):
 	action, S = ltts.step (obv, t);
-	obv, r, done, agen = env.step (action / steps);
+	obv, r, done, agen = env.step (action);
 
-	obv_h.append (obv.copy ());
-	act_h.append (action);
-	S_h.append (S);
+	hist['obv'][:, t] = obv;
+	hist['act'][:, t] = action;
+	hist['agent'][:, t] = agen;
+	hist['targ'][:, t] = env.targ;
+	hist['S'][:, t] = S;
+	hist['T'] = t;
 
 	fig = env.render ();
 
-fig.savefig ('Final Env.png');
+	if done: break;
 
-obv_h = np.array (obv_h)
-S_h = np.array (S_h).T;
+fig.savefig ('Final Env.jpeg');
 
-import matplotlib.pyplot as plt
-import utils as ut
-
-fig, ax = plt.subplots (ncols = 2, nrows = 2)
-
-ax[0, 0].imshow (S_gen, aspect = 'auto', cmap = 'binary');
-ax[0, 1].imshow (S_h, aspect = 'auto', cmap = 'binary');
-ax[1, 0].imshow (np.abs (S_gen - S_h[:, :100]), aspect = 'auto', cmap = 'binary');
-img = ax[1, 1].imshow (np.abs (inp1 - (ltts.Jin @  obv_h.T)[:, :100]), aspect = 'auto');
-
-ut.style_ax (ax[0, 0], ((0, 100), (0, 100)))
-ut.style_ax (ax[0, 1], ((0, 100), (0, 100)))
-ut.style_ax (ax[1, 0], ((0, 100), (0, 100)))
-ut.style_ax (ax[1, 1], ((0, 100), (0, 100)))
-
-fig.colorbar (img, ax = ax[1, 1]);
-
-fig.savefig ('test1.png');
-# plt.show ();
-
-
-fig, ax = plt.subplots ();
-tw_ax = ax.twinx ();
-ax.plot (obv_h[:, 0], c = 'r', label = 'observation');
-ax.plot (obv_h[:, 1], c = 'g', label = 'observation');
-tw_ax.plot (np.array (act_h), label = 'actions');
-ax.legend ();
-tw_ax.legend ();
-
-fig.savefig ('test.png')
-# plt.show ();
+vs.env_hist_plot (hist, save = 'env_hist.png');
