@@ -86,6 +86,6 @@ for t in range (Tend):
 
 	if done: break;
 
-fig.savefig ('Final Env.jpeg');
+fig.savefig ('Final Env.png');
 
 vs.env_hist_plot (hist, save = 'env_hist.png');
