@@ -22,9 +22,9 @@ class LTTS:
         learning via likelihood maximization.
     """
 
-    def __init__ (self, shape, par):
+    def __init__ (self, par):
         # This are the network size N, input I, output O and max temporal span T
-        self.N, self.I, self.O, self.T = shape;
+        self.N, self.I, self.O, self.T = par['shape'];
         net_shape = (self.N, self.T);
 
         self.dt = 1. / self.T;
