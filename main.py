@@ -4,7 +4,8 @@ from ltts import LTTS
 from env import Reach, Intercept
 
 # Here we define our model
-N, I, O, T = 100, 2, 2, 100;
+N, I, O, T = 200, 2, 2, 100;
+shape = (N, I, O, T);
 
 dt = 1 / T;
 tau_m = 2. * dt;
@@ -14,9 +15,9 @@ beta_s  = np.exp (-dt / tau_s);
 beta_ro = np.exp (-dt / tau_ro);
 sigma_teach = 4.;
 sigma_input = 6.;
-offT = 1;
+offT = 2;
 dv = 1 / 5.;
-alpha = .1;
+alpha = .01;
 alpha_rout = .1;
 Vo = -4;
 h = -4;
@@ -26,7 +27,7 @@ s_inh = 20;
 par = {'tau_m' : tau_m, 'tau_s' : tau_s, 'tau_ro' : tau_ro, 'beta_ro' : beta_ro,
 	   'dv' : dv, 'alpha' : alpha, 'Vo' : Vo, 'h' : h, 's_inh' : s_inh,
 	   'N' : N, 'T' : T, 'dt' : dt, 'offT' : offT, 'alpha_rout' : alpha_rout,
-	   'sigma_input' : sigma_input, 'sigma_teach' : sigma_teach};
+	   'sigma_input' : sigma_input, 'sigma_teach' : sigma_teach, 'shape' : shape};
 
 # Here we define target and initial position
 steps = 80;
@@ -36,9 +37,9 @@ targ3 = np.array ((-0.7, 0.8));
 
 init = np.array ((0., 0.));
 
-targets = [np.random.uniform (-1, 1, size = 2) for _ in range (50)];
-inits = [np.random.uniform (-0.5, 0.5, size = 2) for _ in range (50)];
-vtargets = [np.random.uniform (-1., 1., size = 2) for _ in range (50)];
+targets = [np.random.uniform (-1, 1, size = 2) for _ in range (5)];
+inits = [np.random.uniform (-0.5, 0.5, size = 2) for _ in range (5)];
+vtargets = [np.random.uniform (-1., 1., size = 2) for _ in range (5)];
 
 # Here we init the environment
 env = Intercept (init = init, dt = 1 / steps);
