@@ -72,8 +72,8 @@ def env_hist_plot (hist, save = None):
     ax2.plot (hist['agent'][1, :T], c = 'darkblue');
     ax2.set_ylabel ('trajectory');
 
-    ax3.plot (hist['targ'][0, :T] - hist['agent'][0, :T], 'darkgreen');
-    ax3.plot (hist['targ'][1, :T] - hist['agent'][1, :T], 'gold');
+    ax3.plot (np.abs (hist['targ'][0, :T] - hist['agent'][0, :T]), 'darkgreen');
+    ax3.plot (np.abs (hist['targ'][1, :T] - hist['agent'][1, :T]), 'gold');
     ax3.set_ylabel ('error');
 
     # Visualize input to agent and output to environment

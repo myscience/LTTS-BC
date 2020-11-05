@@ -59,6 +59,7 @@ class LTTS:
         # Membrane potential
         self.H = np.ones (self.N) * par['Vo'];
         self.Vo = par['Vo'];
+
         # These are the spikes train and the filtered spikes train
         self.S = np.zeros (self.N);
         self.S_hat = np.zeros (self.N);
@@ -171,8 +172,8 @@ class LTTS:
         self.S [:] = init if init else np.zeros (self.N);
         self.S_hat [:] = self.S [:] * itau_s;
 
-        self.H [:]*=0
-        self.H [:]+=self.Vo
+        self.H [:] *= 0.
+        self.H [:] += self.Vo
 
         Sout = np.zeros ((N, T));
 
@@ -320,8 +321,8 @@ class LTTS:
                 self.S [:] *= 0;#targ [:, 0].copy ();
                 self.S_hat [:] *= 0;
 
-                self.H [:]*=0
-                self.H [:]+=self.Vo
+                self.H [:] *= 0.;
+                self.H [:] += self.Vo;
 
                 dH *= 0;
 
@@ -444,3 +445,24 @@ class LTTS:
                                                 itau = beta_ro))[:, offT:]**2.);
 
         return (J_rout, track) if Jrout is None else track;
+
+    def save (self, filename):
+        # Here we collect the relevant quantities to store
+        data_bundle = (self.Jin, self.Jteach, self.Jout, self.J, self.par)
+
+        np.save (filename, np.array (data_bundle, dtype = np.object));
+
+    @classmethod
+    def load (cls, filename):
+        data_bundle = np.load (filename, allow_pickle = True);
+
+        Jin, Jteach, Jout, J, par = data_bundle;
+
+        obj = LTTS (par);
+
+        obj.Jin = Jin.copy ();
+        obj.Jteach = Jteach.copy ();
+        obj.Jout = Jout.copy ();
+        obj.J = J.copy ();
+
+        return obj;

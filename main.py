@@ -1,7 +1,7 @@
 import visualize as vs
 import numpy as np
 from ltts import LTTS
-from env import Reach
+from env import Reach, Intercept
 
 # Here we define our model
 N, I, O, T = 100, 2, 2, 100;
@@ -29,41 +29,47 @@ par = {'tau_m' : tau_m, 'tau_s' : tau_s, 'tau_ro' : tau_ro, 'beta_ro' : beta_ro,
 	   'sigma_input' : sigma_input, 'sigma_teach' : sigma_teach};
 
 # Here we define target and initial position
+steps = 80;
 targ1 = np.array ((.9, 0.8));
 targ2 = np.array ((-.2, -0.6));
 targ3 = np.array ((-0.7, 0.8));
 
 init = np.array ((0., 0.));
 
+targets = [np.random.uniform (-1, 1, size = 2) for _ in range (50)];
+inits = [np.random.uniform (-0.5, 0.5, size = 2) for _ in range (50)];
+vtargets = [np.random.uniform (-1., 1., size = 2) for _ in range (50)];
+
 # Here we init the environment
-env = Reach (targ = targ1, init = init);
+env = Intercept (init = init, dt = 1 / steps);
 
 # Here we init our model
-ltts = LTTS ((N, I, O, T), par);
+ltts = LTTS (par);
 
 # Based on this information we compute the expert trajectory input-output and
 # produce a network behaviour to clone
-steps = 80;
-expert1 = env.build_expert (targ1, init, steps = steps, T = T, offT = offT);
-expert2 = env.build_expert (targ2, init, steps = steps, T = T, offT = offT);
+experts = [env.build_expert (targ, init, vtarg, offT = 5)
+			for targ, init, vtarg in zip (targets, inits, vtargets)];
 
 # out += np.random.uniform (-0.05, 0.05, size = out.shape);
 
 # Here we implement the expert behaviour into a target network dynamics
-itarg1, inp1 = ltts.implement (expert1);
-itarg2, inp2 = ltts.implement (expert2);
+itargets = [ltts.implement (exp)[0] for exp in experts];
+inputs = [ltts.implement (exp)[1] for exp in experts];
 
 # Here we clone the network dynamics
-ltts.clone ((expert1, expert2), (itarg1, itarg2), epochs = 1000);
-# ltts.clone ((expert1, ), (targ1, ), epochs = 500);
+ltts.clone (experts, itargets, epochs = 500);
+
+# Here we save our model
+ltts.save ('model.npy');
+# ltts = LTTS.load ('model.npy');
 
 # Here we test the resulting behaviour
-S_gen, action = ltts.compute (inp1);
+S_gen, action = ltts.compute (inputs[0]);
 
-vs.cloning_plot ((itarg1, expert1[1]), (S_gen, action), save = 'test-raster.png');
+vs.cloning_plot ((itargets[0], experts[0][1]), (S_gen, action), save = 'test-raster.png');
 
-# Here we move the target
-# targ /= 1.1
+Tend = T;
 
 hist = {'obv' : np.empty ((2, Tend)), 'act' : np.empty ((2, Tend)),
 		'agent' : np.empty ((2, Tend)), 'targ' : np.empty ((2, Tend)),
