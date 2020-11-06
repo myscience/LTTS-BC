@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
+from matplotlib.collections import LineCollection
+
 
 def style_ax (ax, lim):
     if lim[0]: ax.set_xlim (*lim[0]);
@@ -54,9 +56,36 @@ def env_hist_plot (hist, save = None):
     ax5 = fig.add_subplot (gs[2, 1]);
     ax6 = fig.add_subplot (gs[3, :]);
 
-    # Visualize env tranjectory
-    ax1.plot (*hist['agent'][:, :T]);
-    ax1.plot (*hist['targ'][:, :T], c = 'C3', ls = '--');
+    # Visualize env tranjectory with time color-coding
+    atraj = hist['agent'][:, :T].T.reshape (-1, 1, 2);
+    ttraj = hist['targ'][:, :T].T.reshape (-1, 1, 2);
+
+    atraj = np.concatenate ((atraj[:-1], atraj[1:]), axis = 1);
+    ttraj = np.concatenate ((ttraj[:-1], ttraj[1:]), axis = 1);
+
+    norm = plt.Normalize (0, T);
+
+    t = np.linspace (0, T, num = T);
+    alc = LineCollection (atraj, cmap = 'winter', norm = norm);
+    tlc = LineCollection (ttraj, cmap = 'winter', norm = norm);
+
+    alc.set_array (t);
+    tlc.set_array (t);
+
+    aline = ax1.add_collection (alc);
+    tline = ax1.add_collection (tlc);
+
+    cax_a = fig.add_axes([0.11, 0.95, 0.13, 0.02])
+    # cax_t = fig.add_axes([0.11, 0.92, 0.13, 0.02])
+
+    cbax_a = fig.colorbar (aline, cax = cax_a, orientation = 'horizontal', ticks = [0, T])
+    # cbax_t = fig.colorbar (tline, cax = cax_t, orientation = 'horizontal', ticks = [0, T])
+
+    cbax_a.ax.set_xticklabels ([0, 'T']);
+    # cbax_t.ax.set_xticklabels ([0, 'T']);
+
+    # ax1.plot (*hist['targ'][:, :T], c = 'C3', ls = '--');
+
     ax1.scatter (*hist['agent'][:, T], color = 'b', marker = 'p', s = 50);
     ax1.scatter (*hist['targ'][:, T], color = 'firebrick', marker = '*', s = 50);
 
