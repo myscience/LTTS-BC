@@ -284,10 +284,29 @@ class Intercept:
 
         self.ptarg.set_offsets (self.targ);
 
+    def reset (self, init = None, targ = None, vtarg = None):
+        self.agen = np.array (init) if init is not None else np.random.uniform (-1, 1, size = 2);
+        self.targ = np.array (targ) if targ is not None else np.random.uniform (-1, 1, size = 2);
+        self.vtarg = np.array (vtarg) if vtarg is not None else np.random.uniform (-1, 1, size = 2);
+
+        self.atraj *= 0.;
+        self.ttraj *= 0.;
+
+        self.atraj [:, 0] = self.agen;
+        self.ttraj [:, 0] = self.targ;
+
+        self.pagen.set_offsets (self.agen);
+        self.ptarg.set_offsets (self.targ);
+
+        self.patraj.set_data (*self.agen);
+        self.pttraj.set_data (*self.targ);
+
+        self.t = 0;
+
     def build_expert (self, targ, init, vtarg, steps = 80, T = 100, offT = 1, norm = True):
         assert T > steps;
 
-        end_targ = targ + vtarg * self.dt * steps;
+        end_targ = targ + vtarg * self.dt * (steps + 2 * offT);
 
         dx, dy = (end_targ - init) / steps;
 
@@ -295,10 +314,9 @@ class Intercept:
         out = np.array ([[dx, dy] * steps]).reshape (-1, 2)
 
         inp = np.pad (inp, ((0, T - inp.shape [0]), (0, 0))).T;
-        out = np.pad (out, ((0, T - out.shape [0]), (0, 0))).T;
+        out = np.pad (out, ((offT, T - offT - out.shape [0]), (0, 0))).T;
 
-        out[:, :offT] = 0;
-        out[:, steps:] = 0
+        # out[:, steps:] = 0
 
         if norm: out /= np.max (np.abs (out))
 

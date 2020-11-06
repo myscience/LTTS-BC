@@ -4,7 +4,7 @@ from ltts import LTTS
 from env import Reach, Intercept
 
 # Here we define our model
-N, I, O, T = 200, 2, 2, 100;
+N, I, O, T = 100, 2, 2, 100;
 shape = (N, I, O, T);
 
 dt = 1 / T;
@@ -29,6 +29,19 @@ par = {'tau_m' : tau_m, 'tau_s' : tau_s, 'tau_ro' : tau_ro, 'beta_ro' : beta_ro,
 	   'N' : N, 'T' : T, 'dt' : dt, 'offT' : offT, 'alpha_rout' : alpha_rout,
 	   'sigma_input' : sigma_input, 'sigma_teach' : sigma_teach, 'shape' : shape};
 
+def rtarg (box = None):
+	if box is None: box = ((-1, 1), (-1, 1))
+
+	rx = np.random.uniform (*box[0]);
+	ry = np.random.uniform (*box[1]);
+
+	return np.array ([rx, ry]);
+
+def unit_v (theta = None):
+	if theta is None: theta = np.random.uniform (0., 2 * np.pi);
+
+	return np.array ((np.cos (theta), np.sin (theta)));
+
 # Here we define target and initial position
 steps = 80;
 targ1 = np.array ((.9, 0.8));
@@ -37,9 +50,9 @@ targ3 = np.array ((-0.7, 0.8));
 
 init = np.array ((0., 0.));
 
-targets = [np.random.uniform (-1, 1, size = 2) for _ in range (5)];
-inits = [np.random.uniform (-0.5, 0.5, size = 2) for _ in range (5)];
-vtargets = [np.random.uniform (-1., 1., size = 2) for _ in range (5)];
+targets = [np.random.uniform (-1, 1, size = 2) for _ in range (2)];
+inits = [np.random.uniform (-0.5, 0.5, size = 2) for _ in range (2)];
+vtargets = [np.random.uniform (-1., 1., size = 2) for _ in range (2)];
 
 # Here we init the environment
 env = Intercept (init = init, dt = 1 / steps);
@@ -59,7 +72,7 @@ itargets = [ltts.implement (exp)[0] for exp in experts];
 inputs = [ltts.implement (exp)[1] for exp in experts];
 
 # Here we clone the network dynamics
-ltts.clone (experts, itargets, epochs = 500);
+ltts.clone (experts, itargets, epochs = 100);
 
 # Here we save our model
 ltts.save ('model.npy');
@@ -77,6 +90,8 @@ hist = {'obv' : np.empty ((2, Tend)), 'act' : np.empty ((2, Tend)),
 		'expert' : experts, 'targets' : targets,
 		'S' : np.empty ((N, Tend)), 'T' : Tend};
 
+env.reset (init = init, targ = (-0.5, 0.6), vtarg = 0.5 * unit_v(0.3));
+
 obv = init
 for t in range (Tend):
 	action, S = ltts.step (obv, t);
@@ -93,6 +108,25 @@ for t in range (Tend):
 
 	if done: break;
 
-fig.savefig ('Final Env.png');
-
 vs.env_hist_plot (hist, save = 'env_hist.png');
+
+ltts.reset ();
+env.reset (init = init, targ = (-0.5, 0.6), vtarg = 0.5 * unit_v(0.3));
+
+obv = init
+for t in range (Tend):
+	action, S = ltts.step (obv, t);
+	obv, r, done, agen = env.step (action);
+
+	hist['obv'][:, t] = obv;
+	hist['act'][:, t] = action;
+	hist['agent'][:, t] = agen;
+	hist['targ'][:, t] = env.targ;
+	hist['S'][:, t] = S;
+	hist['T'] = t;
+
+	fig = env.render ();
+
+	if done: break;
+
+vs.env_hist_plot (hist, save = 'env_hist2.png');
