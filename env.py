@@ -306,19 +306,18 @@ class Intercept:
     def build_expert (self, targ, init, vtarg, steps = 80, T = 100, offT = 1, norm = True):
         assert T > steps;
 
-        end_targ = targ + vtarg * self.dt * (steps + 2 * offT);
+        end_targ = targ + vtarg * self.dt * (steps + offT);
 
-        dx, dy = (end_targ - init) / steps;
+        v = np.tile ((end_targ - init) / (steps * self.dt), (steps, 1)).T;
+        t = np.linspace (0, steps * self.dt, num = steps);
 
-        inp = init + np.array ([((i + 1) * dx, (i + 1) * dy) for i in range (steps)])
-        out = np.array ([[dx, dy] * steps]).reshape (-1, 2)
+        inp = init.reshape (2, -1) + v * t;
+        out = v;
 
-        inp = np.pad (inp, ((0, T - inp.shape [0]), (0, 0)), mode = 'edge').T;
-        out = np.pad (out, ((offT, T - offT - out.shape [0]), (0, 0))).T;
+        inp = np.pad (inp, ((0, 0), (offT, T - offT - inp.shape [-1])), mode = 'edge');
+        out = np.pad (out, ((0, 0), (offT, T - offT - out.shape [-1])));
 
-        inp = np.linspace (targ, end_targ, num = T).T - inp
-
-        # out[:, steps:] = 0
+        inp = np.linspace (targ, targ + vtarg * self.dt * T, num = T).T - inp
 
         if norm: out /= np.max (np.abs (out))
 
