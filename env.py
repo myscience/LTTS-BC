@@ -310,11 +310,13 @@ class Intercept:
 
         dx, dy = (end_targ - init) / steps;
 
-        inp = end_targ - (init + np.array ([((i + 1) * dx, (i + 1) * dy) for i in range (steps)]))
+        inp = init + np.array ([((i + 1) * dx, (i + 1) * dy) for i in range (steps)])
         out = np.array ([[dx, dy] * steps]).reshape (-1, 2)
 
-        inp = np.pad (inp, ((0, T - inp.shape [0]), (0, 0))).T;
+        inp = np.pad (inp, ((0, T - inp.shape [0]), (0, 0)), mode = 'edge').T;
         out = np.pad (out, ((offT, T - offT - out.shape [0]), (0, 0))).T;
+
+        inp = np.linspace (targ, end_targ, num = T).T - inp
 
         # out[:, steps:] = 0
 
