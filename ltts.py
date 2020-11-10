@@ -191,10 +191,10 @@ class LTTS:
         beta_ro = self.par['beta_ro'];
 
         S_rout = [ut.sfilter (targ, itau = beta_ro) for targ in targets];
-        adam_out = Adam (alpha = alpha_rout, drop = 0.9, drop_time = 50);
+        adam_out = Adam (alpha = alpha_rout, drop = 0.9, drop_time = epochs // 10);
 
         # Here we train the network - online mode
-        adam = Adam (alpha = alpha, drop = 0.9, drop_time = 100 * self.T);
+        adam = Adam (alpha = alpha, drop = 0.9, drop_time = epochs // 10 * self.T);
 
         targets = np.array (targets)
         inps = np.array ([self.Jin @ exp[0] for exp in experts]);
