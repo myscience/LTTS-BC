@@ -157,20 +157,33 @@ class LTTS:
 
         return Sout, self.Jout @ ut.sfilter (Sout, itau = self.par['beta_ro']);
 
-    def implement (self, expert):
+    def implement (self, experts, adapt = True):
         if (self.J != 0).any ():
             print ('WARNING: Implement expert with non-zero recurrent weights\n');
 
-        # First we parse expert input-output pair
-        inp, out = expert
+        # First we parse experts input-output pair
+        inps = np.array ([exp[0] for exp in experts]);
+        outs = np.array ([exp[1] for exp in experts]);
+
+        # Here we extract the maxima of input and output which are used to balance
+        # the signal injection using the sigma_input and sigma_teach variables
+        if adapt:
+            self.sigma_input = 5. / np.max (np.abs (inps));
+            self.sigma_teach = 5. / np.max (np.abs (outs));
+
+            self.par['sigma_input'] = self.sigma_input;
+            self.par['sigma_teach'] = self.sigma_teach;
+
+            self.Jin = np.random.normal (0., self.sigma_input, size = (self.N, self.I));
+            self.Jteach = np.random.normal (0., self.sigma_teach, size = (self.N, self.O));
 
         # We then build a target network dynamics
-        Inp = self.Jin @ inp;
-        tInp = Inp + self.Jteach @ out;
+        Inp = np.einsum ('ij, njt->nit', self.Jin, inps);
+        tInp = Inp + np.einsum ('ij, njt->nit', self.Jteach, outs);
 
-        targ, _ = self.compute (tInp, rec = False);
+        Targ = [self.compute (t_inp, rec = False)[0] for t_inp in tInp];
 
-        return targ, Inp;
+        return Targ, Inp;
 
     def clone (self, experts, targets, epochs = 500):
         assert len (experts) == len (targets);

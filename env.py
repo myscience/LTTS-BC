@@ -145,19 +145,20 @@ class Intercept:
         velocity. Possible action is the agent move in the next time step.
     '''
     def __init__(self, init = None, targ = None, vtarg = None, dt = 1.,
-                    max_T = 500, extent = ((-1, -1), (1, 1)), render = True):
+                    max_T = 500, extent = ((-1, -1), (1, 1)), res = 25, render = True):
         # Here we collect environment duration and span
         self.max_T = max_T;
         self.extent = np.array (extent);
         self.scale = np.mean (self.extent[1] - self.extent[0])
         self.inv_scale = 1 / self.scale;
         self.dt = dt;
+        self.res = res;
 
         # Keep internal time
         self.t = 0;
 
         # Here we init observation array and done flag
-        self.obv = np.empty (2);
+        self.obv = np.empty (2 * res);
         self.done = False;
 
         # Here we init the position of target and agent
@@ -223,12 +224,10 @@ class Intercept:
 
         dist = np.sqrt (np.square (self.targ - self.agen).mean ());
 
-        self.obv [:] = self.targ - self.agen;
+        self.obv [:] = self.encode (self.targ - self.agen);
         self.r = self.dense_r (dist);
 
         self.done = dist < 0.02 * self.scale or self.t > self.max_T
-
-        if self.do_render: self.render ();
 
         # Here we increase the env time
         self.t += 1
@@ -278,6 +277,23 @@ class Intercept:
         # position and target.
         return np.exp (-dist * self.inv_scale);
 
+    def encode(self, pos, res = None):
+        if res is None: res = self.res;
+
+        pos = np.array (pos);
+        if len (pos.shape) == 1: pos = pos.reshape (-1, 1);
+        shape = pos.shape;
+
+        x, y = np.clip (pos.T, *self.extent).T;
+
+        mu_x, mu_y = np.linspace (*self.extent, num = res).T;
+        s_x, s_y = np.diff (self.extent, axis = 0).T / (res);
+
+        enc_x = np.exp (-0.5 * ((x.reshape (-1, 1) - mu_x) / s_x)**2).T;
+        enc_y = np.exp (-0.5 * ((y.reshape (-1, 1) - mu_y) / s_y)**2).T;
+
+        return np.array ((enc_x, enc_y)).reshape(-1, shape[-1]).squeeze ();
+
     def reset_target (self, new_targ = None, new_vtarg = None):
         self.targ = np.array (new_targ) if new_targ is not None else np.random.uniform (-1, 1, size = 2);
         self.vtarg = np.array (new_vtarg) if new_vtarg is not None else np.random.uniform (-1, 1, size = 2);
@@ -319,6 +335,4 @@ class Intercept:
 
         inp = np.linspace (targ, targ + vtarg * self.dt * T, num = T).T - inp
 
-        if norm: out /= np.max (np.abs (out))
-
-        return inp, out;
+        return self.encode (inp), out;

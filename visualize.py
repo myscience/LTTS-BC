@@ -128,3 +128,20 @@ def env_hist_plot (hist, save = None):
         fig.savefig (save);
         plt.close (fig);
     else: plt.show (fig);
+
+def reward_plot (V, Rs, save = None):
+    vtargs, vtests = V;
+
+    fig, ax = plt.subplots (figsize = (12, 8));
+
+    ax.errorbar (vtests[:, 0], Rs, ls = '--', marker = 'o');
+    [ax.axvline (x = v[0], c = 'C3', ls = '--') for v in vtargs]
+
+    ax.set_xlabel ('$v_x$');
+    ax.set_ylabel ('min d(a, t)');
+
+    fig.tight_layout ();
+    if save:
+        fig.savefig (save);
+        plt.close (fig);
+    else: plt.show (fig);
