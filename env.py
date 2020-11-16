@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.transforms as mtransforms
 import matplotlib.patches as mpatch
 from matplotlib.patches import FancyBboxPatch
+from matplotlib.gridspec import GridSpec
 
 from time import sleep
 
