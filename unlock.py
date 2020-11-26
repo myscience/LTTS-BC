@@ -41,7 +41,8 @@ targ = np.array ((0., 1.));
 btn = np.array ((0.2, .5));
 
 # vtargs = np.random.uniform (-0.6, 0.6, size = (10, 2))
-btns = np.array (((0.3, 0.1), (0.3, 0.8)));
+btns = np.array (((0.2, 0.5), ));
+
 # btns = np.array ([(vx, vy) for vx, vy in Prod (np.linspace (-0.6, 0.6, num = 4),
 # 											     np.linspace (-0.6, 0.6, num = 4))])
 
@@ -61,7 +62,7 @@ ltts.save ('model.npy');
 # ltts.load ('model.npy')
 
 agen = ltts.compute (inps[0]);
-vs.cloning_plot ((itargs[0], experts[0][1]), agen, save = 'test0.jpeg');
+vs.cloning_plot ((itargs[0], experts[0][1]), agen, save = 'test0.png');
 
 # agen = ltts.compute (inps[1]);
 # vs.cloning_plot ((itargs[1], experts[1][1]), agen, save = 'test1.jpeg');
