@@ -90,6 +90,9 @@ class LTTS:
 
         return out;
 
+    def _dsigm (self, x, dv = None):
+        return self._sigm (x, dv = dv) * (1. - self._sigm (x, dv = dv));
+
     def step (self, inp, t):
         itau_m = self.itau_m;
         itau_s = self.itau_s;
