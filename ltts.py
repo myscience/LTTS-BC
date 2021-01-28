@@ -185,7 +185,7 @@ class LTTS:
 
         return Targ, Inp;
 
-    def clone (self, experts, targets, epochs = 500):
+    def clone (self, experts, targets, epochs = 500, rank = None):
         assert len (experts) == len (targets);
 
         def shuffle(iter):
@@ -215,6 +215,12 @@ class LTTS:
 
         dH = np.zeros (self.N);
 
+        # FIXME: THIS IS THE RANK CODE PART: CHECK THIS!
+        if rank:
+            B = np.random.normal (0.,  1. / np.sqrt(rank), size = (rank, self.N));
+            D = B.T @ B;
+            D /= np.max (np.abs (D));
+
         # Here we train the network
         for epoch in trange (epochs, leave = False, desc = 'Cloning'):
             shuffle ((inps, outs, targets, S_rout));
@@ -236,10 +242,30 @@ class LTTS:
 
                     dH [:] = dH  * (1. - itau_m) + itau_m * self.S_hat;
 
-                    dJ = np.outer (targ [:, t + 1] - self._sigm (self.H, dv = self.dv), dH);
-                    self.J = adam.step (self.J, dJ);
+                    # dJ = np.outer (targ [:, t + 1] - self._sigm (self.H, dv = self.dv), dH);
 
+                    # CHECK THIS: Compute DJ based on rank!
+                    if rank:
+                        # NOTE: _dsigm should be the psudo-derivative. Maybe this
+                        #       should be set to zero!
+                        dJ = np.outer (D @ (targ [:, t] - self._sigm(self.H, dv = self.dv)) +
+                                       self._dsigm (self.H, dv = 1), dH);
+                    else:
+                        dJ = np.outer (targ [:, t] - self._sigm (self.H, dv = self.dv), dH);
+
+                    self.J = adam.step (self.J, dJ);
                     np.fill_diagonal (self.J, 0.);
+
+                # NOTE: MAYBE ONE SHOULD ADD HERE THE EVALUATION OFF THE OUTPUT
+                #       ERROR. LIKE THIS
+                # for out, s_out in zip(outs, S_rout):
+                #     # s_out = ut.sfilter (Sout, itau = self.par['beta_ro']);
+                #
+                #     dJ = (out - self.Jout @ s_out) @ s_out.T;
+                #     self.Jout = adam_out.step (self.Jout, dJ);
+                #
+                # s, p = self.compute (inp);
+                # track[epoch] = np.sum (np.abs(targ - s));
 
         return ;
 
