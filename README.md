@@ -20,7 +20,7 @@ tqdm
 
 Each package can be installed through `pip` (or anaconda) by running:
 
-> pip3 install <name_of_package>
+` pip3 install <name_of_package> `
 
 #### 2. Training-Evaluation code
 
@@ -28,12 +28,12 @@ The training and the evaluation of the model are performed at the same time. A p
 
 In order to reproduce the data presented in Fig.4B-D run:
 
-> python3 button_food.py
+` python3 button_food.py `
 
 #### 3. Visualization code
 
 To plot the results presented in Fig.4B-D run:
 
-> python3 figure_4.py
+` python3 figure_4.py `
 
 This can be done also without running the previous step, the results are pre-saved in a `pickle` dictionaries format under the `data/` folder.
